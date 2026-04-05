@@ -95,7 +95,8 @@
           const isGitHubPages = host.endsWith('.github.io');
           const isMirror = host === '0rdinals.com' || host.endsWith('.0rdinals.com');
           const isFile = proto === 'file:';
-          if (isLocal || isGitHubPages || isFile || isMirror) defaultOrigin = 'https://ordinals.com';
+          if (isMirror) defaultOrigin = 'https://api.0rdinals.com';
+          else if (isLocal || isGitHubPages || isFile) defaultOrigin = 'https://ordinals.com';
         } catch (_) {}
 
         const origin = (forceOrd ? 'https://ordinals.com' : (qsOrigin || storedOrigin || defaultOrigin || '')).trim();
@@ -248,7 +249,8 @@
       const hostname = window.location.hostname;
         const h = String(hostname || '').toLowerCase();
         const isLocalHost = h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || h === '[::1]';
-        return hostname === 'ordinals.com' || hostname.endsWith('.ordinals.com') || (!isLocalHost && window.location.search.includes('inscription=true'));
+        const isMirror = h === '0rdinals.com' || h.endsWith('.0rdinals.com');
+        return hostname === 'ordinals.com' || hostname.endsWith('.ordinals.com') || (!isLocalHost && !isMirror && window.location.search.includes('inscription=true'));
     } catch (_) {
       return false;
     }
@@ -330,6 +332,26 @@
         }
       }
     } catch (_) {}
+
+    if (FALLBACK_ORIGIN) {
+      try {
+        const rawFetch = window.__NEXUS_RAW_FETCH__ || (window.fetch && window.fetch.bind(window));
+        if (rawFetch) {
+          const resp = await rawFetch(FALLBACK_ORIGIN + '/r/blockheight', {
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json' }
+          });
+          if (resp && resp.ok) {
+            const text = await resp.text();
+            const trimmed = String(text || '').trim();
+            if (/^\d+$/.test(trimmed)) {
+              window.__NEXUS_ORDINALS_ORIGIN__ = FALLBACK_ORIGIN;
+              return FALLBACK_ORIGIN;
+            }
+          }
+        }
+      } catch (_) {}
+    }
 
     const configured = (typeof window.__NEXUS_ORDINALS_ORIGIN__ === 'string' ? window.__NEXUS_ORDINALS_ORIGIN__ : '') || '';
     return configured || FALLBACK_ORIGIN;
@@ -533,7 +555,8 @@
           const isGitHubPages = host.endsWith('.github.io');
           const isMirror = host === '0rdinals.com' || host.endsWith('.0rdinals.com');
           const isFile = proto === 'file:';
-          return (isLocal || isGitHubPages || isFile || isMirror) ? 'https://ordinals.com' : '';
+          if (isMirror) return 'https://api.0rdinals.com';
+          return (isLocal || isGitHubPages || isFile) ? 'https://ordinals.com' : '';
         } catch (_) {
           return '';
         }
@@ -599,7 +622,8 @@
             const isGitHubPages = host.endsWith('.github.io');
             const isMirror = host === '0rdinals.com' || host.endsWith('.0rdinals.com');
             const isFile = proto === 'file:';
-            return (isLocal || isGitHubPages || isFile || isMirror) ? 'https://ordinals.com' : '';
+            if (isMirror) return 'https://api.0rdinals.com';
+            return (isLocal || isGitHubPages || isFile) ? 'https://ordinals.com' : '';
           } catch (_) {
             return '';
           }
